@@ -7,5 +7,6 @@ class Settings(BaseSettings):
     APP_NAME: str
     ENVIRONMENT: str
     DEBUG: bool = False
+    DATABASE_URL: str
 
 settings = Settings()
