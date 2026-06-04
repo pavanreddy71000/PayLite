@@ -11,3 +11,4 @@ wheels/
 .app/core/__pycache__/
 # Virtual environments
 .venv/
+*.db
