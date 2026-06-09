@@ -1,5 +1,5 @@
 from app.db.base import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 
@@ -12,3 +12,4 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at : Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at : Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    wallet: Mapped["Wallet"] = relationship(back_populates='user')
