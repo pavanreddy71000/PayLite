@@ -39,3 +39,8 @@ class AuthenticationError(PayLiteError):
     """Raised for auth failures (bad credentials, expired token, etc.)."""
     def __init__(self, message: str = "Authentication failed"):
         super().__init__(message, status_code = 401)
+
+class InvalidResetTokenError(PayLiteError):
+    """Raised for token failures (invalid token, expired token, already-used token, etc.)."""
+    def __init__(self, message = "Invalid reset token"):
+        super().__init__(message, status_code = 400)
