@@ -1,7 +1,7 @@
 from app.models.wallet import Wallet
 from app.models.transfer import Transfer
 from app.schemas.transfer import TransferHistoryParams
-from fastapi import HTTPException, status
+from app.exceptions import WalletNotFoundError, InsufficientFundsError, InvalidTransferError
 from sqlalchemy import or_, and_
 import math
 
@@ -12,7 +12,7 @@ def get_wallet(db, wallet_id):
 def deposit(db, wallet_id, amount):
     wallet = get_wallet(db, wallet_id)
     if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        raise WalletNotFoundError()
     wallet.balance += amount
     transfer = Transfer(
         sender_wallet_id = None,
@@ -27,9 +27,9 @@ def deposit(db, wallet_id, amount):
 def withdraw(db, wallet_id, amount):
     wallet = get_wallet(db, wallet_id)
     if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        raise WalletNotFoundError()
     if wallet.balance < amount:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance")
+        raise InsufficientFundsError()
     wallet.balance -= amount
     transfer = Transfer(
         sender_wallet_id = wallet_id,
@@ -44,14 +44,14 @@ def withdraw(db, wallet_id, amount):
 def transfer(db, sender_wallet_id, receiver_wallet_id, amount):
     sender_wallet = get_wallet(db, sender_wallet_id)
     if not sender_wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sender wallet not found")
+        raise WalletNotFoundError("Sender wallet not found")
     receiver_wallet = get_wallet(db, receiver_wallet_id)
     if not receiver_wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receiver wallet not found")
+        raise WalletNotFoundError("Receiver wallet not found")
     if sender_wallet_id == receiver_wallet_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot transfer to the same wallet")
+        raise InvalidTransferError("Cannot transfer to the same wallet")
     if sender_wallet.balance < amount:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient balance")
+        raise InsufficientFundsError()
     sender_wallet.balance -= amount
     receiver_wallet.balance += amount
     transfer = Transfer(
@@ -84,7 +84,7 @@ def get_transfer_history(db, wallet_id, params: TransferHistoryParams):
     ALLOWED_SORT_FIELDS = {"created_at": Transfer.created_at, "amount": Transfer.amount}
     field_name = params.sort.lstrip("-")
     if field_name not in ALLOWED_SORT_FIELDS:
-        raise HTTPException(status_code=400, detail=f"Invalid sort field: {field_name}")
+        raise InvalidTransferError(f"Invalid sort field: {field_name}")
     column = ALLOWED_SORT_FIELDS[field_name]
     if params.sort.startswith("-"):
         query = query.order_by(column.desc())
