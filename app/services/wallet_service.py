@@ -87,9 +87,9 @@ def get_transfer_history(db, wallet_id, params: TransferHistoryParams):
         raise InvalidTransferError(f"Invalid sort field: {field_name}")
     column = ALLOWED_SORT_FIELDS[field_name]
     if params.sort.startswith("-"):
-        query = query.order_by(column.desc())
+        query = query.order_by(column.desc(), Transfer.id.desc())
     else:
-        query = query.order_by(column.asc())
+        query = query.order_by(column.asc(), Transfer.id.asc())
     total = query.count()
     offset = (params.page - 1) * params.size
     query = query.offset(offset).limit(params.size)
