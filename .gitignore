@@ -13,3 +13,5 @@ wheels/
 .venv/
 *.db
 .DS_Store
+.coverage
+.DS_Store

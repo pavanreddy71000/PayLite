@@ -1,7 +1,7 @@
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.services.user_service import pwd_context
 from app.db.base import Base
 from app.db.session import get_db
@@ -10,36 +10,40 @@ from app.models import User, Wallet, Transfer, PasswordResetToken
 
 pwd_context.update(bcrypt__rounds=4)
 
-TEST_DATABASE_URL = "sqlite:///./test.db"
+TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-
-
-@pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)      # setup: fresh tables
-    session = TestingSessionLocal()
-    try:
-        yield session                          # the test runs here
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)    # teardown: destroy everything
+engine = create_async_engine(TEST_DATABASE_URL)
+TestingSessionLocal = async_sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
 @pytest.fixture
-def client(db_session):
-    def override_get_db():
+async def db_session():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with TestingSessionLocal() as session:
+        yield session
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture
+async def client(db_session):
+    async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
 
-    yield TestClient(app)
-    app.dependency_overrides.clear()           # teardown: remove the override
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
 
 @pytest.fixture
-def registered_user(client):
-    response = client.post(
+async def registered_user(client):
+    response = await client.post(
         "/users",
         json={"email": "Pavan@Test.com", "full_name": "Pavan", "password": "password"},
     )
@@ -52,8 +56,8 @@ def registered_user(client):
 
 
 @pytest.fixture
-def auth_client(client, registered_user):
-    response = client.post(
+async def auth_client(client, registered_user):
+    response = await client.post(
         "/auth/token",
         data={
             "username": registered_user["email"],
@@ -66,14 +70,15 @@ def auth_client(client, registered_user):
     return client
 
 @pytest.fixture
-def second_user(client, db_session):
-    response = client.post(
+async def second_user(client, db_session):
+    response = await client.post(
         "/users",
         json={"email": "Manoj@Test.com", "full_name": "Manoj", "password": "manoj"},
     )
     assert response.status_code == 201, "user registration failed in fixture"
     user_id = response.json()["id"]
-    wallet = db_session.query(Wallet).filter(Wallet.user_id == user_id).first()
+    result = await db_session.execute(select(Wallet).where(Wallet.user_id == user_id))
+    wallet = result.scalar_one_or_none()
     assert wallet is not None, "wallet not created for second user"
     return {
         "id": user_id,

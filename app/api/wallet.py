@@ -1,5 +1,5 @@
 from fastapi import Depends, status, APIRouter
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.wallet_service import deposit, withdraw, transfer, get_transfer_history
 from app.schemas.wallet import WalletResponse
 from app.schemas.transfer import TransferCreate, DepositCreate, WithdrawCreate, TransferResponse, TransferHistoryParams, PaginatedTransferResponse
@@ -10,40 +10,40 @@ from app.exceptions import WalletNotFoundError
 router = APIRouter(prefix='/wallets')
 
 @router.get("/me", response_model=WalletResponse, status_code=status.HTTP_200_OK)
-def current_user_wallet(current_user = Depends(get_current_user)):
+async def current_user_wallet(current_user = Depends(get_current_user)):
     wallet = current_user.wallet
     if not wallet:
         raise WalletNotFoundError()
     return wallet
 
 @router.post("/me/deposit", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
-def deposit_money(deposit_data: DepositCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+async def deposit_money(deposit_data: DepositCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     wallet = current_user.wallet
     if not wallet:
         raise WalletNotFoundError()
-    transfer_info = deposit(db, wallet.id, deposit_data.amount)
+    transfer_info = await deposit(db, wallet.id, deposit_data.amount)
     return transfer_info
     
 @router.post("/me/withdraw", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
-def withdraw_money(withdraw_data: WithdrawCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+async def withdraw_money(withdraw_data: WithdrawCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     wallet = current_user.wallet
     if not wallet:
         raise WalletNotFoundError()
-    transfer_info = withdraw(db, wallet.id, withdraw_data.amount)
+    transfer_info = await withdraw(db, wallet.id, withdraw_data.amount)
     return transfer_info
 
 @router.post("/me/transfer", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
-def transfer_money(transfer_data: TransferCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+async def transfer_money(transfer_data: TransferCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     wallet = current_user.wallet
     if not wallet:
         raise WalletNotFoundError()
-    transfer_info = transfer(db, wallet.id, transfer_data.receiver_wallet_id, transfer_data.amount)
+    transfer_info = await transfer(db, wallet.id, transfer_data.receiver_wallet_id, transfer_data.amount)
     return transfer_info
 
 @router.get("/me/history", response_model=PaginatedTransferResponse, status_code=status.HTTP_200_OK)
-def transfer_history(parms: TransferHistoryParams = Depends(), db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+async def transfer_history(parms: TransferHistoryParams = Depends(), db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     wallet = current_user.wallet
     if not wallet:
         raise WalletNotFoundError()
-    history = get_transfer_history(db, wallet.id, parms)
+    history = await get_transfer_history(db, wallet.id, parms)
     return history

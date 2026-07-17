@@ -2,15 +2,16 @@ from app.models.wallet import Wallet
 from app.models.transfer import Transfer
 from app.schemas.transfer import TransferHistoryParams
 from app.exceptions import WalletNotFoundError, InsufficientFundsError, InvalidTransferError
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, select, func
 import math
 
 
-def get_wallet(db, wallet_id):
-    return db.query(Wallet).filter(Wallet.id == wallet_id).first()
+async def get_wallet(db, wallet_id):
+    result = await db.execute(select(Wallet).where(Wallet.id == wallet_id))
+    return result.scalar_one_or_none()
 
-def deposit(db, wallet_id, amount):
-    wallet = get_wallet(db, wallet_id)
+async def deposit(db, wallet_id, amount):
+    wallet = await get_wallet(db, wallet_id)
     if not wallet:
         raise WalletNotFoundError()
     wallet.balance += amount
@@ -20,12 +21,12 @@ def deposit(db, wallet_id, amount):
         amount = amount
     )
     db.add(transfer)
-    db.commit()
-    db.refresh(transfer)
+    await db.commit()
+    await db.refresh(transfer)
     return transfer
 
-def withdraw(db, wallet_id, amount):
-    wallet = get_wallet(db, wallet_id)
+async def withdraw(db, wallet_id, amount):
+    wallet = await get_wallet(db, wallet_id)
     if not wallet:
         raise WalletNotFoundError()
     if wallet.balance < amount:
@@ -37,15 +38,15 @@ def withdraw(db, wallet_id, amount):
         amount = amount
     )
     db.add(transfer)
-    db.commit()
-    db.refresh(transfer)
+    await db.commit()
+    await db.refresh(transfer)
     return transfer
  
-def transfer(db, sender_wallet_id, receiver_wallet_id, amount):
-    sender_wallet = get_wallet(db, sender_wallet_id)
+async def transfer(db, sender_wallet_id, receiver_wallet_id, amount):
+    sender_wallet = await get_wallet(db, sender_wallet_id)
     if not sender_wallet:
         raise WalletNotFoundError("Sender wallet not found")
-    receiver_wallet = get_wallet(db, receiver_wallet_id)
+    receiver_wallet = await get_wallet(db, receiver_wallet_id)
     if not receiver_wallet:
         raise WalletNotFoundError("Receiver wallet not found")
     if sender_wallet_id == receiver_wallet_id:
@@ -60,27 +61,27 @@ def transfer(db, sender_wallet_id, receiver_wallet_id, amount):
         amount = amount
     )
     db.add(transfer)
-    db.commit()
-    db.refresh(transfer)
+    await db.commit()
+    await db.refresh(transfer)
     return transfer
 
-def get_transfer_history(db, wallet_id, params: TransferHistoryParams):
-    query = db.query(Transfer).filter(or_(Transfer.sender_wallet_id == wallet_id, Transfer.receiver_wallet_id == wallet_id))
+async def get_transfer_history(db, wallet_id, params: TransferHistoryParams):
+    query = select(Transfer).where(or_(Transfer.sender_wallet_id == wallet_id, Transfer.receiver_wallet_id == wallet_id))
     if params.type is not None:
         if params.type == "deposit":
-            query = query.filter(Transfer.sender_wallet_id == None)
+            query = query.where(Transfer.sender_wallet_id == None)
         elif params.type == "withdrawal":
-            query = query.filter(Transfer.receiver_wallet_id == None)
+            query = query.where(Transfer.receiver_wallet_id == None)
         elif params.type == "transfer":
-            query = query.filter(and_(Transfer.sender_wallet_id != None, Transfer.receiver_wallet_id != None))
+            query = query.where(and_(Transfer.sender_wallet_id != None, Transfer.receiver_wallet_id != None))
     if params.min_amount is not None:
-        query = query.filter(Transfer.amount >= params.min_amount)
+        query = query.where(Transfer.amount >= params.min_amount)
     if params.max_amount is not None:
-        query = query.filter(Transfer.amount <= params.max_amount)
+        query = query.where(Transfer.amount <= params.max_amount)
     if params.from_date is not None:
-        query = query.filter(Transfer.created_at >= params.from_date)
+        query = query.where(Transfer.created_at >= params.from_date)
     if params.to_date is not None:
-        query = query.filter(Transfer.created_at <= params.to_date)
+        query = query.where(Transfer.created_at <= params.to_date)
     ALLOWED_SORT_FIELDS = {"created_at": Transfer.created_at, "amount": Transfer.amount}
     field_name = params.sort.lstrip("-")
     if field_name not in ALLOWED_SORT_FIELDS:
@@ -90,10 +91,12 @@ def get_transfer_history(db, wallet_id, params: TransferHistoryParams):
         query = query.order_by(column.desc(), Transfer.id.desc())
     else:
         query = query.order_by(column.asc(), Transfer.id.asc())
-    total = query.count()
+    count_stmt = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_stmt)).scalar_one()
     offset = (params.page - 1) * params.size
     query = query.offset(offset).limit(params.size)
-    results = query.all()
+    results = await db.execute(query)
+    results = results.scalars().all()
     return {
         "items": results,
         "total": total,

@@ -5,7 +5,7 @@ def test_python_basics():
     assert 2 + 2 == 4
 
 
-def test_password_hash_and_verify():
+async def test_password_hash_and_verify():
     # Arrange — set up the data we need
     password = "SuperSecret123"
 
@@ -14,10 +14,10 @@ def test_password_hash_and_verify():
 
     # Assert — check the outcome
     assert hashed != password          # hashing must not store plaintext
-    assert verify_password(password, hashed) is True
+    assert await verify_password(password, hashed) is True
 
 
-def test_wrong_password_fails():
+async def test_wrong_password_fails():
     hashed = pwd_context.hash("correct-password")
 
-    assert verify_password("wrong-password", hashed) is False
+    assert await verify_password("wrong-password", hashed) is False
