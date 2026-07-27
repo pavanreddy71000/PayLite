@@ -7,12 +7,17 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models import User, Wallet, Transfer, PasswordResetToken
+from sqlalchemy.pool import NullPool
+import os
+from dotenv import load_dotenv
 
 pwd_context.update(bcrypt__rounds=4)
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+load_dotenv()
 
-engine = create_async_engine(TEST_DATABASE_URL)
+TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+
+engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 TestingSessionLocal = async_sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
