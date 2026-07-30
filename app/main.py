@@ -4,7 +4,8 @@ from app.api.users import router as users_router
 from app.api.auth import router as auth_router
 from app.api.wallet import router as wallet_router
 from app.exceptions import PayLiteError
-from pydantic import ValidationError
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import time
@@ -30,11 +31,15 @@ async def paylite_error_handler(request: Request, exc: PayLiteError):
         }
     )
 
-@app.exception_handler(ValidationError)
-async def validation_exception_handler(request, exc):
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"detail": str(exc)}
+        content={
+            "error_type": "ValidationError",
+            "message": "Validation failed",
+            "details": jsonable_encoder(exc.errors()),
+        }
     )
 
 @app.middleware("http")
@@ -47,7 +52,7 @@ async def log_requests(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

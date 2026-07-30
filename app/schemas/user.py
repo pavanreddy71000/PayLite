@@ -1,12 +1,12 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import datetime
 
 class UserBase(BaseModel):
-    email: str
-    full_name: str
+    email: EmailStr
+    full_name: str = Field(min_length=1)
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=8)
 
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -16,6 +16,6 @@ class UserRead(UserBase):
     updated_at: datetime
 
 class UserUpdate(BaseModel):
-    email: str | None = None
-    full_name: str | None = None
+    email: EmailStr | None = None
+    full_name: str | None = Field(default=None, min_length=1)
 
