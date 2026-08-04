@@ -1,9 +1,9 @@
-// Route table. "/" is the protected dashboard; "/login" is public.
-// ProtectedRoute guards the dashboard — no token means redirect to login.
+// Route table. "/" is the protected wallet page; "/login" is public.
+// ProtectedRoute guards the wallet — no token means redirect to login.
 
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
+import Wallet from "./pages/Wallet";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -14,7 +14,7 @@ export default function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Wallet />
           </ProtectedRoute>
         }
       />

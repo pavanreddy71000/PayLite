@@ -60,7 +60,7 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
 
 // Login is SPECIAL: your /auth/token endpoint uses OAuth2PasswordRequestForm,
 // which expects form-urlencoded data with fields "username" and "password"
-// (NOT JSON). "username" is really the email. This is the #1 gotcha, so it
+// (NOT JSON). "username" is really the email.
 // gets its own function rather than going through apiFetch.
 export async function login(email, password) {
   const form = new URLSearchParams();
