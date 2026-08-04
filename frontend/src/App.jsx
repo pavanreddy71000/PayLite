@@ -1,9 +1,9 @@
-// Route table. "/" is the protected wallet page; "/login" is public.
-// ProtectedRoute guards the wallet — no token means redirect to login.
+// Route table. Protected: "/" (wallet) and "/history". Public: "/login".
 
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Wallet from "./pages/Wallet";
+import History from "./pages/History";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -15,6 +15,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Wallet />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <History />
           </ProtectedRoute>
         }
       />

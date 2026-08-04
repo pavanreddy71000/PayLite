@@ -3,12 +3,14 @@
 // updated wallet, so after each success we re-fetch GET /wallets/me.
 
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { fieldErrorsFrom } from "../lib/errors";
 import { useAuth } from "../context/AuthContext";
 
 export default function Wallet() {
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const [wallet, setWallet] = useState(null);
   const [loadError, setLoadError] = useState("");
@@ -36,7 +38,10 @@ export default function Wallet() {
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>Wallet</h1>
-          <button style={styles.logout} onClick={logout}>Log out</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={styles.logout} onClick={() => navigate("/history")}>History</button>
+            <button style={styles.logout} onClick={logout}>Log out</button>
+          </div>
         </div>
 
         {loading && <p style={styles.muted}>Loading…</p>}
