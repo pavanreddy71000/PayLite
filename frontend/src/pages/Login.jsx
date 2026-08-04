@@ -6,14 +6,16 @@
 // onClick to keep control explicit and avoid full-page reloads.
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [email, setEmail] = useState("");
+  // If we arrived here right after registering, prefill the email.
+  const [email, setEmail] = useState(location.state?.email || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,6 +73,11 @@ export default function Login() {
         >
           {submitting ? "Signing in…" : "Sign in"}
         </button>
+
+        <div style={styles.footer}>
+          No account?{" "}
+          <span style={styles.link} onClick={() => navigate("/register")}>Create one</span>
+        </div>
       </div>
     </div>
   );
@@ -124,4 +131,6 @@ const styles = {
     color: "#fecaca",
     fontSize: 13,
   },
+  footer: { marginTop: 20, color: "#94a3b8", fontSize: 13, textAlign: "center" },
+  link: { color: "#818cf8", cursor: "pointer", fontWeight: 600 },
 };
